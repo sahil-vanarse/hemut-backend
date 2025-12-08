@@ -13,7 +13,7 @@ A FastAPI-based backend service for the Hemut Q&A forum platform, featuring user
 
 ## Prerequisites
 
-- Python 3.8+
+- Python 3.11+
 - pip (Python package manager)
 - Supabase account and project
 - Google Cloud API key with Generative AI enabled
@@ -22,8 +22,7 @@ A FastAPI-based backend service for the Hemut Q&A forum platform, featuring user
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/hemut-yc.git
-   cd hemut-yc/hemut-backend
+   git clone https://github.com/sahil-vanarse/hemut-backend.git
    ```
 
 2. Create a virtual environment:
@@ -90,6 +89,7 @@ After starting the server, visit:
 - `ws://localhost:8000/ws` - WebSocket endpoint for real-time updates
 
 ## Deployment
+1. Use Render
 
 ### Using Docker
 
@@ -117,6 +117,3 @@ gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app
 4. Push to the branch
 5. Create a new Pull Request
 
-## License
-
-MIT
