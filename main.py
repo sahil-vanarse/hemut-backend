@@ -14,6 +14,8 @@ import jwt
 from jwt.exceptions import InvalidTokenError
 from dotenv import load_dotenv
 
+import google.generativeai as genai
+from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
@@ -22,6 +24,8 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 JWT_SECRET = os.getenv("JWT_SECRET")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL", "")
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+
 
 # Validate required environment variables
 if not SUPABASE_URL or not SUPABASE_KEY:
@@ -379,28 +383,35 @@ async def get_answers(question_id: str):
 @app.post("/api/questions/{question_id}/suggest")
 async def suggest_answer(question_id: str):
     try:
-        # Get question
-        result = supabase.table("questions").select("*").eq("question_id", question_id).execute()
-        if not result.data:
+        # Get the question from the database
+        question_data = supabase.table('questions').select('*').eq('question_id', question_id).execute()
+        if not question_data.data:
             raise HTTPException(status_code=404, detail="Question not found")
         
-        question = result.data[0]
+        question = question_data.data[0]
         
-        # Simple mock AI suggestion (you can integrate LangChain here)
-        suggestions = [
-            f"Based on the question '{question['message']}', here are some helpful resources...",
-            f"This question is related to common issues. Try checking the documentation.",
-            f"Have you tried restarting the service? This often resolves similar issues."
-        ]
+        # Initialize the Gemini model
+        model = genai.GenerativeModel('gemini-2.5-flash')
         
-        import random
-        suggestion = random.choice(suggestions)
+        # Create the prompt
+        prompt = f"""
+        You are a helpful assistant that provides suggestions for answering questions in a forum.
+        The user has asked: "{question['message']}"
         
-        return {"suggestion": suggestion}
-    except HTTPException:
-        raise
+        Provide a helpful and concise suggestion for answering this question.
+        Focus on the key points and be specific.
+        
+        Suggestion:
+        """
+        
+        # Generate the response
+        response = model.generate_content(prompt)
+        
+        return {"suggestion": response.text.strip()}
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error generating suggestion: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to generate suggestion")
 
 # WebSocket endpoint
 @app.websocket("/ws")
