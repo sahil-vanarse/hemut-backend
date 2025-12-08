@@ -54,6 +54,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add WebSocket CORS handling
+from starlette.middleware import Middleware
+from starlette.websockets import WebSocket as StarletteWebSocket
+
 # WebSocket connection manager
 class ConnectionManager:
     def __init__(self):
@@ -64,14 +68,23 @@ class ConnectionManager:
         self.active_connections.append(websocket)
 
     def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
 
     async def broadcast(self, message: dict):
+        disconnected = []
+        print(f"Broadcasting to {len(self.active_connections)} connections: {message.get('type')}")
         for connection in self.active_connections:
             try:
                 await connection.send_json(message)
-            except:
-                pass
+                print(f"Successfully sent {message.get('type')} to connection")
+            except Exception as e:
+                print(f"Error sending message: {e}")
+                disconnected.append(connection)
+        # Remove disconnected connections
+        for conn in disconnected:
+            if conn in self.active_connections:
+                self.active_connections.remove(conn)
 
 manager = ConnectionManager()
 
@@ -305,6 +318,7 @@ async def update_question(question_id: str, update: QuestionUpdate):
             raise HTTPException(status_code=404, detail="Question not found")
         
         question_data = result.data[0]
+        question_data["username"] = get_username(question_data.get("user_id"))
         
         # Broadcast update
         await manager.broadcast({
@@ -391,15 +405,32 @@ async def suggest_answer(question_id: str):
 # WebSocket endpoint
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
+    print("New WebSocket connection attempt from:", websocket.client)
+    try:
+        await manager.connect(websocket)
+        print(f"✅ WebSocket connected. Total connections: {len(manager.active_connections)}")
+    except Exception as e:
+        print(f"❌ Error connecting WebSocket: {e}")
+        return
     try:
         while True:
-            data = await websocket.receive_text()
-            # Echo received messages (can be used for ping/pong)
-            await websocket.send_text(json.dumps({"type": "pong", "data": data}))
+            try:
+                # Wait for message with timeout to keep connection alive
+                data = await websocket.receive_text()
+                print(f"Received WebSocket message: {data}")
+                # Echo received messages (can be used for ping/pong)
+                await websocket.send_text(json.dumps({"type": "pong", "data": data}))
+            except Exception as e:
+                print(f"Error in WebSocket receive loop: {e}")
+                # If there's an error receiving, break the loop
+                break
     except WebSocketDisconnect:
+        print("WebSocket disconnected normally")
+    finally:
         manager.disconnect(websocket)
+        print(f"WebSocket cleaned up. Remaining connections: {len(manager.active_connections)}")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
