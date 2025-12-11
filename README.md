@@ -93,27 +93,3 @@ After starting the server, visit:
 
 ### Using Docker
 
-1. Build the Docker image:
-   ```bash
-   docker build -t hemut-backend .
-   ```
-
-2. Run the container:
-   ```bash
-   docker run -p 8000:8000 --env-file .env hemut-backend
-   ```
-
-### Using Gunicorn (Production)
-
-```bash
-gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a new Pull Request
-
