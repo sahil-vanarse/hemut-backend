@@ -91,5 +91,4 @@ After starting the server, visit:
 ## Deployment
 1. Use Render
 
-### Using Docker
 
