@@ -90,5 +90,6 @@ After starting the server, visit:
 
 ## Deployment
 1. Use Render
+2. Select the repository hemut-backend, add environment variables on render environment variables section which i have mentioned above and deploy the latest commit or if new repository deploy it.
 
 
